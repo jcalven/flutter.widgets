@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 0.4.1
+
+* Add optional `offset` parameter (shift semantics) to `VisibilityDetector` and
+  `SliverVisibilityDetector`. The offset shifts the widget's logical bounds
+  before intersecting with clip regions so that visibility callbacks can fire
+  earlier or later without altering layout or the reported size. Negative
+  vertical offsets cause earlier visibility detection when scrolling down
+  towards a widget.
+* Document offset semantics; no breaking API changes.
+
 ## 0.4.0+3
 
 * Correct minimum Dart SDK constraints to 2.14.0.

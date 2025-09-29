@@ -27,9 +27,18 @@ class VisibilityDetector extends SingleChildRenderObjectWidget {
   /// among all [VisibilityDetector] and [SliverVisibilityDetector] widgets.
   ///
   /// `onVisibilityChanged` may be `null` to disable this [VisibilityDetector].
+  ///
+  /// `offset` shifts the logical bounds used for visibility calculation by the
+  /// given number of logical pixels before intersecting with ancestor clip
+  /// regions. A negative vertical `offset.dy` causes the widget to be reported
+  /// as visible earlier when scrolling down towards it; a positive value delays
+  /// visibility. The shift does NOT alter layout or painting and does not change
+  /// the reported `size` inside [VisibilityInfo]; only the position used for
+  /// intersection is shifted. Defaults to [Offset.zero].
   const VisibilityDetector({
     required Key key,
     required Widget child,
+    this.offset = Offset.zero,
     required this.onVisibilityChanged,
   })  : assert(key != null),
         assert(child != null),
@@ -38,12 +47,17 @@ class VisibilityDetector extends SingleChildRenderObjectWidget {
   /// The callback to invoke when this widget's visibility changes.
   final VisibilityChangedCallback? onVisibilityChanged;
 
+  /// Shifting offset applied to the widget's global bounds prior to computing
+  /// visibility.
+  final Offset offset;
+
   /// See [RenderObjectWidget.createRenderObject].
   @override
   RenderVisibilityDetector createRenderObject(BuildContext context) {
     return RenderVisibilityDetector(
       key: key!,
       onVisibilityChanged: onVisibilityChanged,
+      offset: offset,
     );
   }
 
@@ -53,6 +67,7 @@ class VisibilityDetector extends SingleChildRenderObjectWidget {
       BuildContext context, RenderVisibilityDetector renderObject) {
     assert(renderObject.key == key);
     renderObject.onVisibilityChanged = onVisibilityChanged;
+    renderObject.offset = offset;
   }
 }
 
@@ -64,9 +79,12 @@ class SliverVisibilityDetector extends SingleChildRenderObjectWidget {
   ///
   /// `onVisibilityChanged` may be `null` to disable this
   /// [SliverVisibilityDetector].
+  ///
+  /// See [VisibilityDetector.offset] for semantics of [offset].
   const SliverVisibilityDetector({
     required Key key,
     required Widget sliver,
+    this.offset = Offset.zero,
     required this.onVisibilityChanged,
   })  : assert(key != null),
         assert(sliver != null),
@@ -75,12 +93,17 @@ class SliverVisibilityDetector extends SingleChildRenderObjectWidget {
   /// The callback to invoke when this widget's visibility changes.
   final VisibilityChangedCallback? onVisibilityChanged;
 
+  /// Shifting offset applied to the sliver's global bounds prior to computing
+  /// visibility.
+  final Offset offset;
+
   /// See [RenderObjectWidget.createRenderObject].
   @override
   RenderSliverVisibilityDetector createRenderObject(BuildContext context) {
     return RenderSliverVisibilityDetector(
       key: key!,
       onVisibilityChanged: onVisibilityChanged,
+      offset: offset,
     );
   }
 
@@ -90,6 +113,7 @@ class SliverVisibilityDetector extends SingleChildRenderObjectWidget {
       BuildContext context, RenderSliverVisibilityDetector renderObject) {
     assert(renderObject.key == key);
     renderObject.onVisibilityChanged = onVisibilityChanged;
+    renderObject.offset = offset;
   }
 }
 
@@ -117,6 +141,12 @@ class VisibilityInfo {
   ///
   /// [widgetBounds] and [clipRect] are expected to be in the same coordinate
   /// system.
+  // Offset semantics rationale:
+  // For the "shift" behavior implemented in this package, we adjust the
+  // widget's global bounds *position* before intersecting with clip regions.
+  // The [VisibilityInfo] continues to report the real widget [size] and the
+  // intersection relative to the *shifted* topLeft. This leaves existing
+  // consumers' fraction logic intact while allowing earlier/later callbacks.
   factory VisibilityInfo.fromRects({
     required Key key,
     required Rect widgetBounds,

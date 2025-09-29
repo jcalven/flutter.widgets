@@ -94,6 +94,29 @@ mixin RenderVisibilityDetectorBase on RenderObject {
 
   VisibilityChangedCallback? _onVisibilityChanged;
 
+  // Shifting offset applied to the computed global widget bounds before
+  // intersecting with ancestor clip regions. Stored here so both box & sliver
+  // implementations share logic.
+  Offset _offset = Offset.zero;
+
+  /// Current visibility shift offset.
+  Offset get offset => _offset;
+
+  /// Sets a new shift [offset]. Triggers a visibility recompute if callbacks
+  /// are enabled. Does not affect layout/paint of child.
+  set offset(Offset value) {
+    if (_offset == value) {
+      return;
+    }
+    assert(value.dx.isFinite && value.dy.isFinite);
+    _offset = value;
+    if (onVisibilityChanged != null) {
+      markNeedsPaint();
+      // Schedule recompute; if not yet laid out, schedule will no-op.
+      _scheduleUpdate();
+    }
+  }
+
   /// See [VisibilityDetector.onVisibilityChanged].
   VisibilityChangedCallback? get onVisibilityChanged => _onVisibilityChanged;
 
@@ -229,9 +252,11 @@ mixin RenderVisibilityDetectorBase on RenderObject {
     if (_lastPaintTransform != null) {
       transform.multiply(_lastPaintTransform!);
     }
+    final Rect globalBounds = MatrixUtils.transformRect(transform, bounds);
+    final Rect shiftedBounds = globalBounds.shift(offset);
     return VisibilityInfo.fromRects(
       key: key,
-      widgetBounds: MatrixUtils.transformRect(transform, bounds),
+      widgetBounds: shiftedBounds,
       clipRect: clip,
     );
   }
@@ -283,9 +308,11 @@ class RenderVisibilityDetector extends RenderProxyBox
     RenderBox? child,
     required this.key,
     required VisibilityChangedCallback? onVisibilityChanged,
+    Offset offset = Offset.zero,
   })  : assert(key != null),
         super(child) {
     _onVisibilityChanged = onVisibilityChanged;
+    _offset = offset;
   }
 
   @override
@@ -306,8 +333,10 @@ class RenderSliverVisibilityDetector extends RenderProxySliver
     RenderSliver? sliver,
     required this.key,
     required VisibilityChangedCallback? onVisibilityChanged,
+    Offset offset = Offset.zero,
   }) : super(sliver) {
     _onVisibilityChanged = onVisibilityChanged;
+    _offset = offset;
   }
 
   @override

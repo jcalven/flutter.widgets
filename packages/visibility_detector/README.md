@@ -21,6 +21,38 @@ the widget tree (such as when switching views or when exiting the application).
 For more details, see the documentation to the `VisibilityDetector`,
 `VisibilityInfo`, and `VisibilityDetectorController` classes.
 
+### Offset (shift) parameter
+
+`VisibilityDetector` and `SliverVisibilityDetector` now accept an optional
+`offset: Offset(dx, dy)` parameter (default `Offset.zero`). This *shifts* the
+logical bounds used for visibility calculation before intersecting with clip
+regions:
+
+* Negative `dy` => detect visibility earlier when scrolling downward.
+* Positive `dy` => delay visibility until more of the widget has actually
+  reached the viewport.
+* Horizontal shifts behave analogously for horizontal scrolling.
+
+The widget's layout, painting, and reported `VisibilityInfo.size` are unchanged;
+only the position used to compute the intersection moves. The visible fraction
+is still computed against the real widget size, so shifting does not inflate or
+deflate the fraction—only *when* callbacks fire.
+
+Example with earlier detection while scrolling down:
+
+```dart
+VisibilityDetector(
+  key: const Key('promo-card'),
+  offset: const Offset(0, -120), // trigger ~120px before it actually reaches view
+  onVisibilityChanged: (info) {
+    if (info.visibleFraction > 0) {
+      // Preload assets, start animations, etc.
+    }
+  },
+  child: const PromoCard(),
+);
+```
+
 
 ## Example usage
 
